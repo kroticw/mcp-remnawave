@@ -70,8 +70,8 @@ export class RemnawaveClient {
         return this.request<T>('PUT', path, body);
     }
 
-    private async delete<T = unknown>(path: string): Promise<T> {
-        return this.request<T>('DELETE', path);
+    private async delete<T = unknown>(path: string, body?: unknown): Promise<T> {
+        return this.request<T>('DELETE', path, body);
     }
 
     // Users
@@ -82,8 +82,16 @@ export class RemnawaveClient {
         );
     }
 
-    async getUserByUuid(uuid: string) {
-        return this.get(REST_API.USERS.GET_BY_UUID(uuid));
+    async getUsersStream(params: Record<string, string | number | undefined>) {
+        const query = new URLSearchParams();
+        for (const [key, value] of Object.entries(params)) {
+            if (value !== undefined) query.set(key, String(value));
+        }
+        return this.get(`${REST_API.USERS.STREAM}?${query}`);
+    }
+
+    async getUserById(userId: number) {
+        return this.get(REST_API.USERS.GET_BY_ID(String(userId)));
     }
 
     async getUserByUsername(username: string) {
@@ -92,26 +100,6 @@ export class RemnawaveClient {
 
     async getUserByShortUuid(shortUuid: string) {
         return this.get(REST_API.USERS.GET_BY.SHORT_UUID(shortUuid));
-    }
-
-    async getUserByTelegramId(telegramId: string) {
-        return this.get(REST_API.USERS.GET_BY.TELEGRAM_ID(telegramId));
-    }
-
-    async getUserByEmail(email: string) {
-        return this.get(REST_API.USERS.GET_BY.EMAIL(email));
-    }
-
-    async getUserByTag(tag: string) {
-        return this.get(REST_API.USERS.GET_BY.TAG(tag));
-    }
-
-    async getUserById(id: string) {
-        return this.get(REST_API.USERS.GET_BY.ID(id));
-    }
-
-    async getUserBySubscriptionUuid(subscriptionUuid: string) {
-        return this.get(REST_API.USERS.GET_BY.SUBSCRIPTION_UUID(subscriptionUuid));
     }
 
     async getUserTags() {
@@ -130,24 +118,28 @@ export class RemnawaveClient {
         return this.patch(REST_API.USERS.UPDATE, params);
     }
 
-    async deleteUser(uuid: string) {
-        return this.delete(REST_API.USERS.DELETE(uuid));
+    async deleteUser(userId: number) {
+        return this.delete(REST_API.USERS.DELETE(String(userId)));
     }
 
-    async enableUser(uuid: string) {
-        return this.post(REST_API.USERS.ACTIONS.ENABLE(uuid));
+    async enableUser(userId: number) {
+        return this.post(REST_API.USERS.ACTIONS.ENABLE(String(userId)));
     }
 
-    async disableUser(uuid: string) {
-        return this.post(REST_API.USERS.ACTIONS.DISABLE(uuid));
+    async disableUser(userId: number) {
+        return this.post(REST_API.USERS.ACTIONS.DISABLE(String(userId)));
     }
 
-    async revokeUserSubscription(uuid: string) {
-        return this.post(REST_API.USERS.ACTIONS.REVOKE_SUBSCRIPTION(uuid));
+    async revokeUserSubscription(userId: number, params?: Record<string, unknown>) {
+        return this.post(REST_API.USERS.ACTIONS.REVOKE_SUBSCRIPTION(String(userId)), params);
     }
 
-    async resetUserTraffic(uuid: string) {
-        return this.post(REST_API.USERS.ACTIONS.RESET_TRAFFIC(uuid));
+    async resetUserTraffic(userId: number) {
+        return this.post(REST_API.USERS.ACTIONS.RESET_TRAFFIC(String(userId)));
+    }
+
+    async extendUserExpiration(userId: number, params: Record<string, unknown>) {
+        return this.post(REST_API.USERS.ACTIONS.EXTEND_EXPIRATION_DATE(String(userId)), params);
     }
 
     async bulkDeleteUsersByStatus(params: Record<string, unknown>) {
@@ -290,12 +282,12 @@ export class RemnawaveClient {
         return this.post(REST_API.HOSTS.BULK.DELETE_HOSTS, params);
     }
 
-    async bulkSetHostInbound(params: Record<string, unknown>) {
-        return this.post(REST_API.HOSTS.BULK.SET_INBOUND, params);
+    async bulkUpdateHosts(params: Record<string, unknown>) {
+        return this.patch(REST_API.HOSTS.BULK.UPDATE, params);
     }
 
-    async bulkSetHostPort(params: Record<string, unknown>) {
-        return this.post(REST_API.HOSTS.BULK.SET_PORT, params);
+    async cloneHost(params: Record<string, unknown>) {
+        return this.post(REST_API.HOSTS.ACTIONS.CLONE, params);
     }
 
     // System
@@ -338,14 +330,8 @@ export class RemnawaveClient {
 
     // Subscriptions
 
-    async getSubscriptions(start = 0, size = 25) {
-        return this.get(
-            `${REST_API.SUBSCRIPTIONS.GET}?start=${start}&size=${size}`,
-        );
-    }
-
-    async getSubscriptionByUuid(uuid: string) {
-        return this.get(REST_API.SUBSCRIPTIONS.GET_BY.UUID(uuid));
+    async getSubscriptionByUserId(userId: number) {
+        return this.get(REST_API.SUBSCRIPTIONS.GET_BY.ID(String(userId)));
     }
 
     async getSubscriptionByUsername(username: string) {
@@ -364,8 +350,8 @@ export class RemnawaveClient {
         return this.get(REST_API.SUBSCRIPTIONS.SUBPAGE.GET_CONFIG(shortUuid));
     }
 
-    async getConnectionKeysByUuid(uuid: string) {
-        return this.get(REST_API.SUBSCRIPTIONS.GET_CONNECTION_KEYS_BY_UUID(uuid));
+    async getConnectionKeysByUserId(userId: number) {
+        return this.get(REST_API.SUBSCRIPTIONS.GET_CONNECTION_KEYS_BY_USER_ID(String(userId)));
     }
 
     async getSubscriptionInfo(shortUuid: string) {
@@ -440,52 +426,56 @@ export class RemnawaveClient {
         return this.delete(REST_API.INTERNAL_SQUADS.DELETE(uuid));
     }
 
-    async addUsersToSquad(squadUuid: string, userUuids: string[]) {
+    async addUsersToSquad(squadUuid: string, userIds: number[]) {
         return this.post(
-            REST_API.INTERNAL_SQUADS.BULK_ACTIONS.ADD_USERS(squadUuid),
-            { userUuids },
+            REST_API.INTERNAL_SQUADS.BULK_ACTIONS.ADD_MANY_USERS(squadUuid),
+            { userIds },
         );
     }
 
-    async removeUsersFromSquad(squadUuid: string, userUuids: string[]) {
-        return this.post(
-            REST_API.INTERNAL_SQUADS.BULK_ACTIONS.REMOVE_USERS(squadUuid),
-            { userUuids },
+    async removeUsersFromSquad(squadUuid: string, userIds: number[]) {
+        return this.delete(
+            REST_API.INTERNAL_SQUADS.BULK_ACTIONS.REMOVE_MANY_USERS(squadUuid),
+            { userIds },
         );
     }
 
     // HWID
 
-    async getUserHwidDevices(userUuid: string) {
-        return this.get(REST_API.HWID.GET_USER_HWID_DEVICES(userUuid));
+    async getUserHwidDevices(userId: number) {
+        return this.get(REST_API.HWID.GET_USER_HWID_DEVICES(String(userId)));
     }
 
-    async getAllHwidDevices() {
-        return this.get(REST_API.HWID.GET_ALL_HWID_DEVICES);
+    async getAllHwidDevices(start = 0, size = 25) {
+        return this.get(
+            `${REST_API.HWID.GET_ALL_HWID_DEVICES}?start=${start}&size=${size}`,
+        );
     }
 
     async getHwidStats() {
         return this.get(REST_API.HWID.STATS);
     }
 
-    async getHwidTopUsers() {
-        return this.get(REST_API.HWID.TOP_USERS_BY_DEVICES);
+    async getHwidTopUsers(start = 0, size = 25) {
+        return this.get(
+            `${REST_API.HWID.TOP_USERS_BY_DEVICES}?start=${start}&size=${size}`,
+        );
     }
 
     async createUserHwidDevice(params: Record<string, unknown>) {
         return this.post(REST_API.HWID.CREATE_USER_HWID_DEVICE, params);
     }
 
-    async deleteHwidDevice(userUuid: string, hwid: string) {
+    async deleteHwidDevice(userId: number, hwid: string) {
         return this.post(REST_API.HWID.DELETE_USER_HWID_DEVICE, {
-            userUuid,
+            userId,
             hwid,
         });
     }
 
-    async deleteAllUserHwidDevices(userUuid: string) {
+    async deleteAllUserHwidDevices(userId: number) {
         return this.post(REST_API.HWID.DELETE_ALL_USER_HWID_DEVICES, {
-            userUuid,
+            userId,
         });
     }
 
@@ -499,28 +489,10 @@ export class RemnawaveClient {
         return this.get(REST_API.BANDWIDTH_STATS.NODES.GET_REALTIME);
     }
 
-    async getUserBandwidthByUuid(uuid: string) {
-        return this.get(REST_API.BANDWIDTH_STATS.USERS.GET_BY_UUID(uuid));
-    }
-
     // Auth
 
     async getAuthStatus() {
         return this.get(REST_API.AUTH.GET_STATUS);
-    }
-
-    // API Tokens
-
-    async getApiTokens() {
-        return this.get(REST_API.API_TOKENS.GET);
-    }
-
-    async createApiToken(params: Record<string, unknown>) {
-        return this.post(REST_API.API_TOKENS.CREATE, params);
-    }
-
-    async deleteApiToken(uuid: string) {
-        return this.delete(REST_API.API_TOKENS.DELETE(uuid));
     }
 
     // Keygen
@@ -619,18 +591,12 @@ export class RemnawaveClient {
         return this.delete(REST_API.EXTERNAL_SQUADS.DELETE(uuid));
     }
 
-    async addUsersToExternalSquad(squadUuid: string, userUuids: string[]) {
-        return this.post(
-            REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.ADD_USERS(squadUuid),
-            { userUuids },
-        );
+    async addAllUsersToExternalSquad(squadUuid: string) {
+        return this.post(REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.ADD_USERS(squadUuid));
     }
 
-    async removeUsersFromExternalSquad(squadUuid: string, userUuids: string[]) {
-        return this.post(
-            REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.REMOVE_USERS(squadUuid),
-            { userUuids },
-        );
+    async removeAllUsersFromExternalSquad(squadUuid: string) {
+        return this.delete(REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.REMOVE_USERS(squadUuid));
     }
 
     async reorderExternalSquads(params: Record<string, unknown>) {
@@ -720,29 +686,37 @@ export class RemnawaveClient {
     }
 
     async truncateTorrentBlockerReports() {
-        return this.post(REST_API.NODE_PLUGINS.TORRENT_BLOCKER.TRUNCATE_REPORTS);
+        return this.delete(REST_API.NODE_PLUGINS.TORRENT_BLOCKER.TRUNCATE_REPORTS);
     }
 
-    // IP Control
+    // Connections
 
-    async fetchIps(uuid: string) {
-        return this.post(REST_API.IP_CONTROL.FETCH_IPS(uuid));
+    async connectionsByUser(userId: number) {
+        return this.post(REST_API.CONNECTIONS.CONNECTIONS_BY_USER(String(userId)));
     }
 
-    async getFetchIpsResult(jobId: string) {
-        return this.get(REST_API.IP_CONTROL.GET_FETCH_IPS_RESULT(jobId));
+    async connectionsByUserResult(jobId: string) {
+        return this.get(REST_API.CONNECTIONS.CONNECTIONS_BY_USER_RESULT(jobId));
+    }
+
+    async connectionsByNode(nodeUuid: string) {
+        return this.post(REST_API.CONNECTIONS.CONNECTIONS_BY_NODE(nodeUuid));
+    }
+
+    async connectionsByNodeResult(jobId: string) {
+        return this.get(REST_API.CONNECTIONS.CONNECTIONS_BY_NODE_RESULT(jobId));
+    }
+
+    async geocheckByNode(nodeUuid: string, params: Record<string, unknown>) {
+        return this.post(REST_API.CONNECTIONS.GEOCHECK_BY_NODE(nodeUuid), params);
+    }
+
+    async geocheckByNodeResult(jobId: string) {
+        return this.get(REST_API.CONNECTIONS.GEOCHECK_BY_NODE_RESULT(jobId));
     }
 
     async dropConnections(params: Record<string, unknown>) {
-        return this.post(REST_API.IP_CONTROL.DROP_CONNECTIONS, params);
-    }
-
-    async fetchUsersIps(nodeUuid: string) {
-        return this.post(REST_API.IP_CONTROL.FETCH_USERS_IPS(nodeUuid));
-    }
-
-    async getFetchUsersIpsResult(jobId: string) {
-        return this.get(REST_API.IP_CONTROL.GET_FETCH_USERS_IPS_RESULT(jobId));
+        return this.post(REST_API.CONNECTIONS.DROP_CONNECTIONS, params);
     }
 
     // Metadata
@@ -751,15 +725,15 @@ export class RemnawaveClient {
         return this.get(REST_API.METADATA.NODE.GET(uuid));
     }
 
-    async upsertNodeMetadata(uuid: string, params: Record<string, unknown>) {
-        return this.put(REST_API.METADATA.NODE.UPSERT(uuid), params);
+    async upsertNodeMetadata(uuid: string, metadata: Record<string, unknown>) {
+        return this.put(REST_API.METADATA.NODE.UPSERT(uuid), { metadata });
     }
 
-    async getUserMetadata(uuid: string) {
-        return this.get(REST_API.METADATA.USER.GET(uuid));
+    async getUserMetadata(userId: number) {
+        return this.get(REST_API.METADATA.USER.GET(String(userId)));
     }
 
-    async upsertUserMetadata(uuid: string, params: Record<string, unknown>) {
-        return this.put(REST_API.METADATA.USER.UPSERT(uuid), params);
+    async upsertUserMetadata(userId: number, metadata: Record<string, unknown>) {
+        return this.put(REST_API.METADATA.USER.UPSERT(String(userId)), { metadata });
     }
 }

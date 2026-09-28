@@ -6,6 +6,7 @@ import { toolResult, toolError } from './helpers.js';
 export function registerSystemTools(
     server: McpServer,
     client: RemnawaveClient,
+    readonly: boolean,
 ) {
     server.tool(
         'system_stats',
@@ -132,6 +133,9 @@ export function registerSystemTools(
             }
         },
     );
+
+    // Remnawave classifies the SRR matcher as a write endpoint, so a read-only token cannot call it.
+    if (readonly) return;
 
     server.tool(
         'system_srr_matcher',

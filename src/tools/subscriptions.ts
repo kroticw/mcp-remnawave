@@ -8,31 +8,14 @@ export function registerSubscriptionTools(
     client: RemnawaveClient,
 ) {
     server.tool(
-        'subscriptions_list',
-        'List all subscriptions with pagination',
+        'subscriptions_get_by_id',
+        'Get subscription details by numeric user ID',
         {
-            start: z.number().default(0).describe('Offset for pagination'),
-            size: z.number().default(25).describe('Number of subscriptions'),
+            userId: z.number().int().describe('Numeric user ID'),
         },
-        async ({ start, size }) => {
+        async ({ userId }) => {
             try {
-                const result = await client.getSubscriptions(start, size);
-                return toolResult(result);
-            } catch (e) {
-                return toolError(e);
-            }
-        },
-    );
-
-    server.tool(
-        'subscriptions_get_by_uuid',
-        'Get subscription details by UUID',
-        {
-            uuid: z.string().describe('Subscription UUID'),
-        },
-        async ({ uuid }) => {
-            try {
-                const result = await client.getSubscriptionByUuid(uuid);
+                const result = await client.getSubscriptionByUserId(userId);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -111,10 +94,10 @@ export function registerSubscriptionTools(
 
     server.tool(
         'subscriptions_get_connection_keys',
-        'Get connection keys for a subscription',
-        { uuid: z.string().describe('Subscription UUID') },
-        async ({ uuid }) => {
-            try { return toolResult(await client.getConnectionKeysByUuid(uuid)); } catch (e) { return toolError(e); }
+        'Get connection keys of a user by numeric user ID',
+        { userId: z.number().int().describe('Numeric user ID') },
+        async ({ userId }) => {
+            try { return toolResult(await client.getConnectionKeysByUserId(userId)); } catch (e) { return toolError(e); }
         },
     );
 
