@@ -353,27 +353,43 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
     );
 
     server.tool(
-        'hosts_bulk_set_inbound',
-        'Bulk set inbound for selected hosts',
+        'hosts_bulk_update',
+        'Bulk update fields of selected hosts (only the given fields change)',
         {
-            uuids: z.array(z.string()).describe('Array of host UUIDs'),
-            configProfileUuid: z.string().describe('Config profile UUID'),
-            configProfileInboundUuid: z.string().describe('Inbound UUID'),
+            uuids: z.array(z.string()).min(1).describe('Array of host UUIDs'),
+            inbound: z
+                .object({
+                    configProfileUuid: z.string().describe('Config profile UUID'),
+                    configProfileInboundUuid: z.string().describe('Inbound UUID'),
+                })
+                .optional()
+                .describe('Inbound to bind the hosts to'),
+            port: z.number().optional().describe('New port number'),
+            address: z.string().optional().describe('New address'),
+            remark: z.string().optional().describe('New remark'),
+            host: z.string().optional().describe('New host'),
+            path: z.string().optional().describe('New path'),
+            sni: z.string().optional().describe('New SNI'),
+            alpn: z.string().optional().describe('New ALPN'),
+            fingerprint: z.string().optional().describe('New fingerprint'),
+            isDisabled: z.boolean().optional().describe('Disable or enable the hosts'),
+            isHidden: z.boolean().optional().describe('Hide or show the hosts'),
+            tags: z.array(z.string()).optional().describe('New tags'),
+            serverDescription: z.string().optional().describe('New server description'),
         },
         async (params) => {
-            try { return toolResult(await client.bulkSetHostInbound(params)); } catch (e) { return toolError(e); }
+            try { return toolResult(await client.bulkUpdateHosts(params)); } catch (e) { return toolError(e); }
         },
     );
 
     server.tool(
-        'hosts_bulk_set_port',
-        'Bulk set port for selected hosts',
+        'hosts_clone',
+        'Clone a host',
         {
-            uuids: z.array(z.string()).describe('Array of host UUIDs'),
-            port: z.number().describe('New port number'),
+            cloneFromUuid: z.string().describe('UUID of the host to clone'),
         },
         async (params) => {
-            try { return toolResult(await client.bulkSetHostPort(params)); } catch (e) { return toolError(e); }
+            try { return toolResult(await client.cloneHost(params)); } catch (e) { return toolError(e); }
         },
     );
 }

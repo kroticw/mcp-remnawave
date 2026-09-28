@@ -12,11 +12,11 @@ export function registerHwidTools(
         'hwid_devices_list',
         'List HWID devices for a specific user',
         {
-            userUuid: z.string().describe('User UUID'),
+            userId: z.number().int().describe('Numeric user ID'),
         },
-        async ({ userUuid }) => {
+        async ({ userId }) => {
             try {
-                const result = await client.getUserHwidDevices(userUuid);
+                const result = await client.getUserHwidDevices(userId);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -26,11 +26,14 @@ export function registerHwidTools(
 
     server.tool(
         'hwid_devices_list_all',
-        'List all HWID devices across all users',
-        {},
-        async () => {
+        'List all HWID devices across all users with pagination',
+        {
+            start: z.number().default(0).describe('Offset for pagination'),
+            size: z.number().default(25).describe('Number of devices to return'),
+        },
+        async ({ start, size }) => {
             try {
-                const result = await client.getAllHwidDevices();
+                const result = await client.getAllHwidDevices(start, size);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -55,10 +58,13 @@ export function registerHwidTools(
     server.tool(
         'hwid_top_users',
         'Get users with most HWID devices',
-        {},
-        async () => {
+        {
+            start: z.number().default(0).describe('Offset for pagination'),
+            size: z.number().default(25).describe('Number of users to return'),
+        },
+        async ({ start, size }) => {
             try {
-                const result = await client.getHwidTopUsers();
+                const result = await client.getHwidTopUsers(start, size);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -72,7 +78,7 @@ export function registerHwidTools(
         'hwid_device_create',
         'Create a HWID device entry for a user',
         {
-            userUuid: z.string().describe('User UUID'),
+            userId: z.number().int().describe('Numeric user ID'),
             hwid: z.string().describe('Hardware ID'),
             platform: z.string().optional().describe('Device platform'),
             osVersion: z.string().optional().describe('OS version'),
@@ -93,12 +99,12 @@ export function registerHwidTools(
         'hwid_device_delete',
         'Delete a specific HWID device',
         {
-            userUuid: z.string().describe('User UUID'),
+            userId: z.number().int().describe('Numeric user ID'),
             hwid: z.string().describe('HWID of the device to delete'),
         },
-        async ({ userUuid, hwid }) => {
+        async ({ userId, hwid }) => {
             try {
-                const result = await client.deleteHwidDevice(userUuid, hwid);
+                const result = await client.deleteHwidDevice(userId, hwid);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -110,12 +116,12 @@ export function registerHwidTools(
         'hwid_devices_delete_all',
         'Delete all HWID devices for a user',
         {
-            userUuid: z.string().describe('User UUID'),
+            userId: z.number().int().describe('Numeric user ID'),
         },
-        async ({ userUuid }) => {
+        async ({ userId }) => {
             try {
                 const result =
-                    await client.deleteAllUserHwidDevices(userUuid);
+                    await client.deleteAllUserHwidDevices(userId);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);

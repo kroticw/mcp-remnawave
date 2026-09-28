@@ -5,6 +5,7 @@ export interface Config {
     cfAccessClientId?: string;
     cfAccessClientSecret?: string;
     readonly: boolean;
+    expectedTitle?: string;
 }
 
 export function loadConfig(): Config {
@@ -14,6 +15,7 @@ export function loadConfig(): Config {
     const cfAccessClientId = process.env.CF_ACCESS_CLIENT_ID;
     const cfAccessClientSecret = process.env.CF_ACCESS_CLIENT_SECRET;
     const readonly = process.env.REMNAWAVE_READONLY === 'true';
+    const expectedTitle = process.env.REMNAWAVE_EXPECTED_TITLE?.trim() || undefined;
 
     if (!baseUrl) {
         throw new Error('REMNAWAVE_BASE_URL environment variable is required');
@@ -29,5 +31,6 @@ export function loadConfig(): Config {
         cfAccessClientId,
         cfAccessClientSecret,
         readonly,
+        expectedTitle,
     };
 }
