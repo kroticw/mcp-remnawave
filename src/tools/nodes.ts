@@ -124,7 +124,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
 
     server.tool(
         'nodes_update',
-        'Update an existing node',
+        'Update an existing node. `activeConfigProfileUuid` and `activeInbounds` go together and replace the node profile binding. A new inbound list is stored but not pushed to the node: disable and enable the node to apply it',
         {
             uuid: z.string().describe('Node UUID to update'),
             name: z.string().optional().describe('New node name'),
@@ -151,10 +151,25 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
                 .number()
                 .optional()
                 .describe('New consumption multiplier'),
+            activeConfigProfileUuid: z
+                .string()
+                .optional()
+                .describe('Config profile UUID; requires activeInbounds'),
+            activeInbounds: z
+                .array(z.string())
+                .optional()
+                .describe('Inbound UUIDs active on the node (replaces the current list); requires activeConfigProfileUuid'),
         },
-        async (params) => {
+        async ({ activeConfigProfileUuid, activeInbounds, ...params }) => {
             try {
-                const result = await client.updateNode(params);
+                if ((activeConfigProfileUuid === undefined) !== (activeInbounds === undefined)) {
+                    throw new Error('activeConfigProfileUuid and activeInbounds must be set together');
+                }
+                const body: Record<string, unknown> = { ...params };
+                if (activeConfigProfileUuid !== undefined) {
+                    body.configProfile = { activeConfigProfileUuid, activeInbounds };
+                }
+                const result = await client.updateNode(body);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
