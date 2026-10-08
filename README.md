@@ -196,7 +196,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `nodes_get` | Get node by UUID | read |
 | `nodes_tags_list` | List all node tags | read |
 | `nodes_create` | Create a new node | write |
-| `nodes_update` | Update node settings | write |
+| `nodes_update` | Update node settings, including the config profile and active inbounds | write |
 | `nodes_delete` | Delete a node | write |
 | `nodes_enable` | Enable a node | write |
 | `nodes_disable` | Disable a node | write |
@@ -263,7 +263,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `config_profiles_get_inbounds` | Get inbounds by profile UUID | read |
 | `config_profiles_get_computed_config` | Get computed config by profile UUID | read |
 | `config_profiles_create` | Create config profile | write |
-| `config_profiles_update` | Update config profile | write |
+| `config_profiles_update` | Rename a config profile or replace its Xray config | write |
 | `config_profiles_delete` | Delete config profile | write |
 | `config_profiles_reorder` | Reorder config profiles | write |
 
@@ -274,7 +274,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `squads_list` | List all squads | read |
 | `squads_accessible_nodes` | Get squad accessible nodes | read |
 | `squads_create` | Create a squad | write |
-| `squads_update` | Update a squad | write |
+| `squads_update` | Rename a squad or replace its inbounds | write |
 | `squads_delete` | Delete a squad | write |
 | `squads_add_users` | Add users to a squad by numeric user IDs | write |
 | `squads_remove_users` | Remove users from a squad by numeric user IDs | write |
@@ -658,7 +658,7 @@ docker compose up -d
 | `nodes_get` | Получить ноду по UUID | read |
 | `nodes_tags_list` | Список тегов нод | read |
 | `nodes_create` | Создать новую ноду | write |
-| `nodes_update` | Обновить настройки ноды | write |
+| `nodes_update` | Обновить настройки ноды, в том числе профиль и активные инбаунды | write |
 | `nodes_delete` | Удалить ноду | write |
 | `nodes_enable` | Включить ноду | write |
 | `nodes_disable` | Отключить ноду | write |
@@ -725,7 +725,7 @@ docker compose up -d
 | `config_profiles_get_inbounds` | Inbounds по UUID профиля | read |
 | `config_profiles_get_computed_config` | Вычисленный конфиг по UUID профиля | read |
 | `config_profiles_create` | Создать конфиг-профиль | write |
-| `config_profiles_update` | Обновить конфиг-профиль | write |
+| `config_profiles_update` | Переименовать конфиг-профиль или заменить его конфиг Xray | write |
 | `config_profiles_delete` | Удалить конфиг-профиль | write |
 | `config_profiles_reorder` | Переупорядочить конфиг-профили | write |
 
@@ -736,7 +736,7 @@ docker compose up -d
 | `squads_list` | Список групп | read |
 | `squads_accessible_nodes` | Доступные ноды группы | read |
 | `squads_create` | Создать группу | write |
-| `squads_update` | Обновить группу | write |
+| `squads_update` | Переименовать группу или заменить её инбаунды | write |
 | `squads_delete` | Удалить группу | write |
 | `squads_add_users` | Добавить пользователей в группу по числовым ID | write |
 | `squads_remove_users` | Убрать пользователей из группы по числовым ID | write |
