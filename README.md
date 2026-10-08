@@ -10,7 +10,7 @@
 
 MCP server ([Model Context Protocol](https://modelcontextprotocol.io)) providing LLM clients (Claude Desktop, Cursor, Windsurf, etc.) with tools to manage a [Remnawave](https://github.com/remnawave/) VPN panel.
 
-**Version:** 2.0.0 | **Remnawave API:** 3.4.x
+**Version:** 2.1.0 | **Remnawave API:** 3.4.x
 
 ### Features
 
@@ -472,7 +472,7 @@ MIT
 
 MCP-сервер ([Model Context Protocol](https://modelcontextprotocol.io)), предоставляющий LLM-клиентам (Claude Desktop, Cursor, Windsurf и др.) инструменты для управления VPN-панелью [Remnawave](https://github.com/remnawave/).
 
-**Версия:** 2.0.0 | **Remnawave API:** 3.4.x
+**Версия:** 2.1.0 | **Remnawave API:** 3.4.x
 
 ### Возможности
 
