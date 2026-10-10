@@ -14,10 +14,11 @@ MCP server ([Model Context Protocol](https://modelcontextprotocol.io)) providing
 
 ### Features
 
-- **149 tools** — full management of users, nodes, hosts, subscriptions, squads, HWID, config profiles, inbounds, billing, snippets, external squads, settings, subscription page configs, node plugins, connections, and metadata
+- **150 tools** — full management of users, nodes, hosts, subscriptions, squads, HWID, config profiles, inbounds, billing, snippets, external squads, settings, subscription page configs, node plugins, connections, and metadata
 - **3 resources** — real-time panel stats, node status, health checks
 - **5 prompts** — guided workflows for common tasks
 - **Readonly mode** — restrict to 65 read-only tools for safe monitoring
+- **Secret redaction** — credentials and private keys never reach the model (see below)
 - **Caddy support** — `X-Api-Key` header for panels behind Caddy with custom path
 - **Type-safe** — built on [@remnawave/backend-contract](https://www.npmjs.com/package/@remnawave/backend-contract) for API route validation
 - **stdio transport** — works with Claude Desktop, Cursor, Windsurf, and any MCP-compatible client
@@ -46,6 +47,7 @@ Create a `.env` file or pass environment variables:
 | `REMNAWAVE_API_TOKEN` | Yes | API token from panel settings |
 | `REMNAWAVE_API_KEY` | No | API key for Caddy reverse proxy authentication |
 | `REMNAWAVE_READONLY` | No | Set to `true` to enable readonly mode |
+| `REMNAWAVE_REDACT` | No | Set to `false` to turn off secret redaction in tool output (on by default) |
 | `REMNAWAVE_EXPECTED_TITLE` | No | Panel branding title (`auth_status`); the server refuses to start if the panel says otherwise, so a wrong URL or token cannot point it at the wrong panel |
 
 ```env
@@ -77,13 +79,48 @@ The tools follow the 3.x API (`@remnawave/backend-contract` 3.4). Breaking chang
 
 `npm test` builds the server and runs it against a fake panel. It checks that every request a tool makes matches a command of the installed contract, and that readonly mode only reaches endpoints the contract marks as `read`.
 
+### Secret Redaction
+
+Every tool result, error message and resource goes through one formatter that replaces secrets with `***redacted***` before they reach the model:
+
+- values of keys such as `privateKey`, `password`, `mldsa65Seed`, `ssPassword`, `trojanPassword`, `vlessUuid`, `psk`, `secretKey`, `preSharedKey`, `SECRET_KEY`, and any key ending in `password`, `privateKey`, `secretKey` or `preSharedKey`;
+- client ids inside Xray `clients` arrays;
+- `token=` query values inside any string (subscription URLs).
+
+Public values such as `publicKey` and `shortIds` stay visible. As a consequence `keygen_get` and `system_generate_x25519` no longer show the generated secrets; use the `$gen:` placeholders of `config_profiles_patch` to put new keys into a config without the model seeing them. Set `REMNAWAVE_REDACT=false` to turn redaction off.
+
+### Patching Config Profiles
+
+`config_profiles_patch` changes a config profile without sending the full config through the model. The server fetches the profile, applies the operations in memory and writes the whole config back with the update endpoint; the response contains only a redacted before/after diff of the touched paths. `dryRun: true` computes the diff without saving.
+
+```json
+{
+  "uuid": "<profile uuid>",
+  "operations": [
+    { "op": "set", "path": "inbounds[tag=reality-in].streamSettings.realitySettings.minClientVer", "value": "25.9.11" },
+    { "op": "delete", "path": "inbounds[2]" },
+    { "op": "append", "path": "outbounds", "value": { "tag": "block", "protocol": "blackhole" } }
+  ]
+}
+```
+
+Paths support plain keys, numeric indexes and `[field=value]` selectors; a selector that matches zero or several elements fails and nothing is written. Placeholders inside values are resolved on the server:
+
+| Placeholder | Stored | Returned |
+|-------------|--------|----------|
+| `$gen:x25519.privateKey` | new X25519 private key (raw 32 bytes, base64url) | matching `publicKey` |
+| `$gen:shortId` | 8 random hex chars | the value |
+| `$gen:uuid` | random UUID | the value |
+| `$gen:ss2022key:<bytes>` | random base64 key | nothing |
+| `$ref:user:<username>.vlessUuid` (also `.ssPassword`, `.trojanPassword`) | the user's credential | nothing |
+
 ### Readonly Mode
 
 Set `REMNAWAVE_READONLY=true` to disable all write operations (create, update, delete, enable, disable, restart, revoke, reset). Only read/list tools will be registered.
 
 Useful for monitoring dashboards or shared environments where you want to prevent accidental changes.
 
-In readonly mode, the available tools are reduced from 149 to 65:
+In readonly mode, the available tools are reduced from 150 to 65:
 
 | Category | Available tools |
 |----------|----------------|
@@ -200,8 +237,8 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `nodes_delete` | Delete a node | write |
 | `nodes_enable` | Enable a node | write |
 | `nodes_disable` | Disable a node | write |
-| `nodes_restart` | Restart a specific node | write |
-| `nodes_restart_all` | Restart all nodes | write |
+| `nodes_restart` | Restart a specific node (`forceRestart` optional) | write |
+| `nodes_restart_all` | Restart all nodes (`forceRestart` optional) | write |
 | `nodes_reset_traffic` | Reset node traffic counter | write |
 | `nodes_reorder` | Reorder nodes | write |
 | `nodes_bulk_profile_modification` | Bulk modify node profiles | write |
@@ -253,7 +290,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `subscription_request_history_list` | Subscription request history | read |
 | `subscription_request_history_stats` | Subscription request history stats | read |
 
-#### Config Profiles & Inbounds (9 tools)
+#### Config Profiles & Inbounds (10 tools)
 
 | Tool | Description | Mode |
 |------|-------------|------|
@@ -264,6 +301,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `config_profiles_get_computed_config` | Get computed config by profile UUID | read |
 | `config_profiles_create` | Create config profile | write |
 | `config_profiles_update` | Update config profile | write |
+| `config_profiles_patch` | Patch config by path, returns only a redacted diff | write |
 | `config_profiles_delete` | Delete config profile | write |
 | `config_profiles_reorder` | Reorder config profiles | write |
 
@@ -432,6 +470,8 @@ src/
 ├── index.ts                       # Entry point (stdio transport)
 ├── server.ts                      # McpServer setup
 ├── config.ts                      # Environment config
+├── redact.ts                      # Secret redaction for all output
+├── config-patch.ts                # Path-based config patching and placeholders
 ├── client/
 │   └── index.ts                   # Remnawave HTTP client
 ├── tools/
@@ -443,6 +483,7 @@ src/
 │   ├── system.ts                  # System & auth (10 tools)
 │   ├── subscriptions.ts           # Subscriptions (9 tools)
 │   ├── inbounds.ts                # Config profiles & inbounds (9 tools)
+│   ├── config-profile-patch.ts    # config_profiles_patch (1 tool)
 │   ├── squads.ts                  # Internal squads (7 tools)
 │   ├── hwid.ts                    # HWID devices (7 tools)
 │   ├── infra-billing.ts           # Infrastructure billing (12 tools)
