@@ -20,10 +20,13 @@ export async function verifyPanelIdentity(config: Config): Promise<void> {
     }
 }
 
+// Replaced with the package.json version at build time, see tsup.config.ts.
+declare const __PACKAGE_VERSION__: string;
+
 export function createServer(config: Config): McpServer {
     const server = new McpServer({
         name: config.expectedTitle ? `remnawave-mcp (${config.expectedTitle})` : 'remnawave-mcp',
-        version: '2.4.0',
+        version: __PACKAGE_VERSION__,
     });
 
     setRedactionEnabled(config.redact);

@@ -59,14 +59,18 @@ export function registerSquadTools(
 
     server.tool(
         'squads_update',
-        'Update an internal squad: rename it and/or change its inbounds. Inbounds may be given as UUIDs or tags. ' +
-            '`inbounds` replaces the whole list; `addInbounds`/`removeInbounds` edit the current list.',
+        'Update an internal squad: rename it and/or change its inbounds. ' +
+            '`inbounds` replaces the whole list; `addInbounds`/`removeInbounds` edit the current list. ' +
+            'Inbounds are UUIDs, or tags written as "tag:<name>".',
         {
             uuid: z.string().describe('Squad UUID'),
             name: z.string().optional().describe('New squad name'),
-            inbounds: z.array(z.string()).optional().describe('Replace the inbound list (UUIDs or tags)'),
-            addInbounds: z.array(z.string()).optional().describe('Inbounds to add (UUIDs or tags)'),
-            removeInbounds: z.array(z.string()).optional().describe('Inbounds to remove (UUIDs or tags)'),
+            inbounds: z
+                .array(z.string())
+                .optional()
+                .describe('Inbounds of the squad, replacing the current list (UUIDs or "tag:<name>")'),
+            addInbounds: z.array(z.string()).optional().describe('Inbounds to add (UUIDs or "tag:<name>")'),
+            removeInbounds: z.array(z.string()).optional().describe('Inbounds to remove (UUIDs or "tag:<name>")'),
         },
         async ({ uuid, name, inbounds, addInbounds, removeInbounds }) => {
             try {
@@ -153,45 +157,53 @@ export function registerSquadTools(
     );
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TAG_PREFIX = 'tag:';
 
 interface InboundRef {
     uuid: string;
     tag: string;
 }
 
-/** Computes the final inbound UUID list for a squad update; fails on unknown references. */
+/** Resolves "tag:<name>" references against `known`; anything else is taken as an inbound UUID. */
+function inboundResolver(known: InboundRef[], scope: string): (ref: string) => string {
+    return (ref) => {
+        if (!ref.startsWith(TAG_PREFIX)) return ref;
+        const tag = ref.slice(TAG_PREFIX.length);
+        const matches = known.filter((i) => i.tag === tag);
+        if (matches.length !== 1) throw new Error(`Inbound tag "${tag}" matches ${matches.length} inbounds of ${scope}`);
+        return matches[0].uuid;
+    };
+}
+
+function hasTags(...lists: (string[] | undefined)[]): boolean {
+    return lists.some((l) => l?.some((r) => r.startsWith(TAG_PREFIX)));
+}
+
+function applyEdits(current: string[], add: string[], remove: string[]): string[] {
+    const out = [...current];
+    for (const id of add) if (!out.includes(id)) out.push(id);
+    const drop = new Set(remove);
+    return out.filter((id) => !drop.has(id));
+}
+
+/** Computes the final inbound UUID list for a squad update; fails on unknown inbound tags. */
 async function resolveSquadInbounds(
     client: RemnawaveClient,
     squadUuid: string,
     edits: { inbounds?: string[]; addInbounds?: string[]; removeInbounds?: string[] },
 ): Promise<string[]> {
-    const refs = [...(edits.inbounds ?? []), ...(edits.addInbounds ?? []), ...(edits.removeInbounds ?? [])];
     let known: InboundRef[] = [];
-    if (refs.some((r) => !UUID_RE.test(r))) {
+    if (hasTags(edits.inbounds, edits.addInbounds, edits.removeInbounds)) {
         const all = (await client.getAllInbounds()) as { response?: { inbounds?: InboundRef[] } };
         known = all.response?.inbounds ?? [];
     }
-    const toUuid = (ref: string): string => {
-        if (UUID_RE.test(ref)) return ref;
-        const matches = known.filter((i) => i.tag === ref);
-        if (matches.length !== 1) {
-            throw new Error(`Inbound "${ref}" matches ${matches.length} inbounds; use its UUID`);
-        }
-        return matches[0].uuid;
-    };
-
-    let current: string[];
+    const toUuid = inboundResolver(known, 'the panel');
+    let base: string[];
     if (edits.inbounds) {
-        current = edits.inbounds.map(toUuid);
+        base = edits.inbounds.map(toUuid);
     } else {
         const squad = (await client.getInternalSquad(squadUuid)) as { response?: { inbounds?: InboundRef[] } };
-        current = (squad.response?.inbounds ?? []).map((i) => i.uuid);
+        base = (squad.response?.inbounds ?? []).map((i) => i.uuid);
     }
-    for (const ref of edits.addInbounds ?? []) {
-        const id = toUuid(ref);
-        if (!current.includes(id)) current.push(id);
-    }
-    const drop = new Set((edits.removeInbounds ?? []).map(toUuid));
-    return current.filter((id) => !drop.has(id));
+    return applyEdits(base, (edits.addInbounds ?? []).map(toUuid), (edits.removeInbounds ?? []).map(toUuid));
 }

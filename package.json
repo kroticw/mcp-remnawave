@@ -23,7 +23,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@remnawave/backend-contract": "^3.4.15",
     "zod": "^3.25.76"
   },

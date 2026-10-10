@@ -10,7 +10,7 @@
 
 MCP server ([Model Context Protocol](https://modelcontextprotocol.io)) providing LLM clients (Claude Desktop, Cursor, Windsurf, etc.) with tools to manage a [Remnawave](https://github.com/remnawave/) VPN panel.
 
-**Version:** 2.0.0 | **Remnawave API:** 3.4.x
+**Version:** 2.1.0 | **Remnawave API:** 3.4.x
 
 ### Features
 
@@ -233,7 +233,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `nodes_get` | Get node by UUID | read |
 | `nodes_tags_list` | List all node tags | read |
 | `nodes_create` | Create a new node | write |
-| `nodes_update` | Update node settings, switch its config profile and active inbounds (UUIDs or tags) | write |
+| `nodes_update` | Update node settings, the config profile and active inbounds (replace, add or remove; UUIDs or `tag:<name>`) | write |
 | `nodes_delete` | Delete a node | write |
 | `nodes_enable` | Enable a node | write |
 | `nodes_disable` | Disable a node | write |
@@ -300,7 +300,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `config_profiles_get_inbounds` | Get inbounds by profile UUID | read |
 | `config_profiles_get_computed_config` | Get computed config by profile UUID | read |
 | `config_profiles_create` | Create config profile | write |
-| `config_profiles_update` | Update config profile | write |
+| `config_profiles_update` | Rename a config profile or replace its Xray config | write |
 | `config_profiles_patch` | Patch config by path, returns only a redacted diff | write |
 | `config_profiles_delete` | Delete config profile | write |
 | `config_profiles_reorder` | Reorder config profiles | write |
@@ -312,7 +312,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `squads_list` | List all squads | read |
 | `squads_accessible_nodes` | Get squad accessible nodes | read |
 | `squads_create` | Create a squad | write |
-| `squads_update` | Rename a squad and replace, add or remove its inbounds (UUIDs or tags) | write |
+| `squads_update` | Rename a squad and replace, add or remove its inbounds (UUIDs or `tag:<name>`) | write |
 | `squads_delete` | Delete a squad | write |
 | `squads_add_users` | Add users to a squad by numeric user IDs | write |
 | `squads_remove_users` | Remove users from a squad by numeric user IDs | write |
@@ -513,7 +513,7 @@ MIT
 
 MCP-сервер ([Model Context Protocol](https://modelcontextprotocol.io)), предоставляющий LLM-клиентам (Claude Desktop, Cursor, Windsurf и др.) инструменты для управления VPN-панелью [Remnawave](https://github.com/remnawave/).
 
-**Версия:** 2.0.0 | **Remnawave API:** 3.4.x
+**Версия:** 2.1.0 | **Remnawave API:** 3.4.x
 
 ### Возможности
 
@@ -699,7 +699,7 @@ docker compose up -d
 | `nodes_get` | Получить ноду по UUID | read |
 | `nodes_tags_list` | Список тегов нод | read |
 | `nodes_create` | Создать новую ноду | write |
-| `nodes_update` | Обновить настройки ноды, сменить профиль и активные инбаунды (UUID или теги) | write |
+| `nodes_update` | Обновить настройки ноды, профиль и активные инбаунды (заменить, добавить или убрать; UUID или `tag:<имя>`) | write |
 | `nodes_delete` | Удалить ноду | write |
 | `nodes_enable` | Включить ноду | write |
 | `nodes_disable` | Отключить ноду | write |
@@ -766,7 +766,7 @@ docker compose up -d
 | `config_profiles_get_inbounds` | Inbounds по UUID профиля | read |
 | `config_profiles_get_computed_config` | Вычисленный конфиг по UUID профиля | read |
 | `config_profiles_create` | Создать конфиг-профиль | write |
-| `config_profiles_update` | Обновить конфиг-профиль | write |
+| `config_profiles_update` | Переименовать конфиг-профиль или заменить его конфиг Xray | write |
 | `config_profiles_delete` | Удалить конфиг-профиль | write |
 | `config_profiles_reorder` | Переупорядочить конфиг-профили | write |
 
@@ -777,7 +777,7 @@ docker compose up -d
 | `squads_list` | Список групп | read |
 | `squads_accessible_nodes` | Доступные ноды группы | read |
 | `squads_create` | Создать группу | write |
-| `squads_update` | Переименовать группу, заменить, добавить или убрать её инбаунды (UUID или теги) | write |
+| `squads_update` | Переименовать группу, заменить, добавить или убрать её инбаунды (UUID или `tag:<имя>`) | write |
 | `squads_delete` | Удалить группу | write |
 | `squads_add_users` | Добавить пользователей в группу по числовым ID | write |
 | `squads_remove_users` | Убрать пользователей из группы по числовым ID | write |

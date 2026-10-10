@@ -49,7 +49,7 @@ function patchBody(calls) {
 }
 
 test('addActiveInbounds by tag keeps the profile and current inbounds', async () => {
-    const { calls } = await callOnce(client, panel, 'nodes_update', { uuid: NODE, addActiveInbounds: ['C'] });
+    const { calls } = await callOnce(client, panel, 'nodes_update', { uuid: NODE, addActiveInbounds: ['tag:C'] });
     assert.deepEqual(patchBody(calls).configProfile, {
         activeConfigProfileUuid: PROFILE,
         activeInbounds: [IN_A, IN_B, IN_C],
@@ -57,21 +57,21 @@ test('addActiveInbounds by tag keeps the profile and current inbounds', async ()
 });
 
 test('removeActiveInbounds drops only that inbound', async () => {
-    const { calls } = await callOnce(client, panel, 'nodes_update', { uuid: NODE, removeActiveInbounds: ['A'] });
+    const { calls } = await callOnce(client, panel, 'nodes_update', { uuid: NODE, removeActiveInbounds: ['tag:A'] });
     assert.deepEqual(patchBody(calls).configProfile.activeInbounds, [IN_B]);
 });
 
 test('switching the profile resolves tags in the new profile', async () => {
     const { calls } = await callOnce(client, panel, 'nodes_update', {
         uuid: NODE,
-        configProfileUuid: OTHER,
-        activeInbounds: ['C'],
+        activeConfigProfileUuid: OTHER,
+        activeInbounds: ['tag:C'],
     });
     assert.deepEqual(patchBody(calls).configProfile, { activeConfigProfileUuid: OTHER, activeInbounds: [IN_C] });
 });
 
 test('an unknown inbound tag fails without writing', async () => {
-    const { result, calls } = await callOnce(client, panel, 'nodes_update', { uuid: NODE, addActiveInbounds: ['nope'] });
+    const { result, calls } = await callOnce(client, panel, 'nodes_update', { uuid: NODE, addActiveInbounds: ['tag:nope'] });
     assert.equal(result.isError, true);
     assert.equal(calls.filter((c) => c.method === 'PATCH').length, 0);
 });

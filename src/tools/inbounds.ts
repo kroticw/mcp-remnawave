@@ -108,10 +108,14 @@ export function registerInboundTools(
 
     server.tool(
         'config_profiles_update',
-        'Update a config profile',
+        'Update a config profile. `config` replaces the whole Xray config: read it with config_profiles_get, edit, send back. The panel matches inbounds by tag, so renaming a tag detaches its hosts and squads',
         {
             uuid: z.string().describe('Profile UUID'),
             name: z.string().optional().describe('New name'),
+            config: z
+                .record(z.string(), z.unknown())
+                .optional()
+                .describe('Full Xray config of the profile (replaces the current one)'),
         },
         async (params) => {
             try {

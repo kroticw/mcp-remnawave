@@ -1,65 +1,61 @@
-name: Build and Release
+name: ci
 
 on:
+  pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build-and-release:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Determine version
-        id: version
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Check that the tag matches package.json
         run: |
-          # Try to get version from package.json
-          VERSION=$(node -p "try { require('./package.json').version } catch(e) { '' }")
-          if [ -n "$VERSION" ] && [ "$VERSION" != "undefined" ]; then
-            echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
-            echo "release_name=v${VERSION}" >> "$GITHUB_OUTPUT"
-          else
-            # Fallback: use timestamp-based tag
-            TAG="build-$(date +'%Y%m%d-%H%M%S')"
-            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-            echo "release_name=${TAG}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create release archive
-        run: |
-          if [ -d "dist" ]; then
-            cd dist && zip -r ../mcp-release.zip .
-          else
-            echo "ERROR: dist directory not found. Build may have failed."
+          version=$(node --print "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
             exit 1
           fi
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.release_name }}
-          body: |
-            Automated release from commit ${{ github.sha }}
-
-            ## Changes
-            ${{ github.event.head_commit.message }}
-          files: mcp-release.zip
-          generate_release_notes: true
+      - run: npm ci
+      - run: npm run build
+      # The archive unpacks into a directory that runs as is: the bundle plus
+      # production dependencies, the layout `node <dir>/index.js` expects.
+      - name: Package
+        run: |
+          dir="remnawave-mcp-${GITHUB_REF_NAME#v}"
+          mkdir "$dir"
+          cp dist/index.js dist/index.js.map package.json package-lock.json "$dir/"
+          (cd "$dir" && npm ci --omit=dev --ignore-scripts)
+          tar --create --gzip --file "$dir.tar.gz" "$dir"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "remnawave-mcp-${GITHUB_REF_NAME#v}.tar.gz" \
+            --title "$GITHUB_REF_NAME" --generate-notes --verify-tag

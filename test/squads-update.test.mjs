@@ -41,7 +41,7 @@ test('inbounds replaces the list', async () => {
 });
 
 test('addInbounds by tag keeps the current inbounds', async () => {
-    const { calls } = await callOnce(client, panel, 'squads_update', { uuid: SQUAD, addInbounds: ['C'] });
+    const { calls } = await callOnce(client, panel, 'squads_update', { uuid: SQUAD, addInbounds: ['tag:C'] });
     assert.deepEqual(patchBody(calls), { uuid: SQUAD, inbounds: [IN_A, IN_B, IN_C] });
 });
 
@@ -51,7 +51,7 @@ test('removeInbounds by uuid drops only that inbound', async () => {
 });
 
 test('an unknown inbound tag fails without writing', async () => {
-    const { result, calls } = await callOnce(client, panel, 'squads_update', { uuid: SQUAD, addInbounds: ['nope'] });
+    const { result, calls } = await callOnce(client, panel, 'squads_update', { uuid: SQUAD, addInbounds: ['tag:nope'] });
     assert.equal(result.isError, true);
     assert.equal(calls.filter((c) => c.method === 'PATCH').length, 0);
 });

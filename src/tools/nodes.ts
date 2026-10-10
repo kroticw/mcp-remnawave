@@ -124,7 +124,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
 
     server.tool(
         'nodes_update',
-        'Update an existing node',
+        'Update an existing node. `activeConfigProfileUuid` and `activeInbounds` go together and replace the node profile binding. A new inbound list is stored but not pushed to the node: disable and enable the node to apply it',
         {
             uuid: z.string().describe('Node UUID to update'),
             name: z.string().optional().describe('New node name'),
@@ -151,29 +151,32 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
                 .number()
                 .optional()
                 .describe('New consumption multiplier'),
-            configProfileUuid: z
+            activeConfigProfileUuid: z
                 .string()
                 .optional()
-                .describe('Switch the node to this config profile (keeps the current one if omitted)'),
+                .describe('Config profile UUID; required together with activeInbounds'),
             activeInbounds: z
                 .array(z.string())
                 .optional()
-                .describe('Replace the active inbounds of the node (UUIDs or tags of its profile)'),
+                .describe('Inbounds active on the node, replacing the current list; requires activeConfigProfileUuid. UUIDs, or tags as "tag:<name>"'),
             addActiveInbounds: z
                 .array(z.string())
                 .optional()
-                .describe('Activate these inbounds on the node (UUIDs or tags)'),
+                .describe('Activate these inbounds of the current profile (UUIDs or "tag:<name>")'),
             removeActiveInbounds: z
                 .array(z.string())
                 .optional()
-                .describe('Deactivate these inbounds on the node (UUIDs or tags)'),
+                .describe('Deactivate these inbounds (UUIDs or "tag:<name>")'),
         },
-        async ({ configProfileUuid, activeInbounds, addActiveInbounds, removeActiveInbounds, ...params }) => {
+        async ({ activeConfigProfileUuid, activeInbounds, addActiveInbounds, removeActiveInbounds, ...params }) => {
             try {
+                if ((activeConfigProfileUuid === undefined) !== (activeInbounds === undefined)) {
+                    throw new Error('activeConfigProfileUuid and activeInbounds must be set together');
+                }
                 const body: Record<string, unknown> = { ...params };
-                if (configProfileUuid || activeInbounds || addActiveInbounds || removeActiveInbounds) {
+                if (activeConfigProfileUuid !== undefined || addActiveInbounds || removeActiveInbounds) {
                     body.configProfile = await resolveNodeProfile(client, params.uuid, {
-                        configProfileUuid,
+                        activeConfigProfileUuid,
                         activeInbounds,
                         addActiveInbounds,
                         removeActiveInbounds,
@@ -379,59 +382,68 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
     );
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TAG_PREFIX = 'tag:';
 
 interface InboundRef {
     uuid: string;
     tag: string;
 }
 
-/** Builds the configProfile block for a node update; fails on unknown inbound references. */
+/** Resolves "tag:<name>" references against `known`; anything else is taken as an inbound UUID. */
+function inboundResolver(known: InboundRef[], scope: string): (ref: string) => string {
+    return (ref) => {
+        if (!ref.startsWith(TAG_PREFIX)) return ref;
+        const tag = ref.slice(TAG_PREFIX.length);
+        const matches = known.filter((i) => i.tag === tag);
+        if (matches.length !== 1) throw new Error(`Inbound tag "${tag}" matches ${matches.length} inbounds of ${scope}`);
+        return matches[0].uuid;
+    };
+}
+
+function hasTags(...lists: (string[] | undefined)[]): boolean {
+    return lists.some((l) => l?.some((r) => r.startsWith(TAG_PREFIX)));
+}
+
+function applyEdits(current: string[], add: string[], remove: string[]): string[] {
+    const out = [...current];
+    for (const id of add) if (!out.includes(id)) out.push(id);
+    const drop = new Set(remove);
+    return out.filter((id) => !drop.has(id));
+}
+
+/** Builds the configProfile block for a node update; fails on unknown inbound tags. */
 async function resolveNodeProfile(
     client: RemnawaveClient,
     nodeUuid: string,
     edits: {
-        configProfileUuid?: string;
+        activeConfigProfileUuid?: string;
         activeInbounds?: string[];
         addActiveInbounds?: string[];
         removeActiveInbounds?: string[];
     },
 ): Promise<{ activeConfigProfileUuid: string; activeInbounds: string[] }> {
-    const node = (await client.getNodeByUuid(nodeUuid)) as {
-        response?: { configProfile?: { activeConfigProfileUuid?: string | null; activeInbounds?: InboundRef[] } };
-    };
-    const current = node.response?.configProfile;
-    const profileUuid = edits.configProfileUuid ?? current?.activeConfigProfileUuid;
-    if (!profileUuid) throw new Error('The node has no config profile; pass configProfileUuid');
-    const switching = profileUuid !== current?.activeConfigProfileUuid;
+    const editing = edits.addActiveInbounds !== undefined || edits.removeActiveInbounds !== undefined;
+    let profileUuid = edits.activeConfigProfileUuid;
+    let current: string[] = [];
+    if (editing && edits.activeInbounds === undefined) {
+        const node = (await client.getNodeByUuid(nodeUuid)) as {
+            response?: { configProfile?: { activeConfigProfileUuid?: string | null; activeInbounds?: InboundRef[] } };
+        };
+        const cp = node.response?.configProfile;
+        profileUuid = cp?.activeConfigProfileUuid ?? undefined;
+        current = (cp?.activeInbounds ?? []).map((i) => i.uuid);
+    }
+    if (!profileUuid) throw new Error('The node has no config profile; set activeConfigProfileUuid and activeInbounds');
 
-    const refs = [
-        ...(edits.activeInbounds ?? []),
-        ...(edits.addActiveInbounds ?? []),
-        ...(edits.removeActiveInbounds ?? []),
-    ];
     let known: InboundRef[] = [];
-    if (refs.some((r) => !UUID_RE.test(r))) {
+    if (hasTags(edits.activeInbounds, edits.addActiveInbounds, edits.removeActiveInbounds)) {
         const list = (await client.getInboundsByProfileUuid(profileUuid)) as { response?: { inbounds?: InboundRef[] } };
         known = list.response?.inbounds ?? [];
     }
-    const toUuid = (ref: string): string => {
-        if (UUID_RE.test(ref)) return ref;
-        const matches = known.filter((i) => i.tag === ref);
-        if (matches.length !== 1) {
-            throw new Error(`Inbound "${ref}" matches ${matches.length} inbounds of profile ${profileUuid}`);
-        }
-        return matches[0].uuid;
+    const toUuid = inboundResolver(known, `profile ${profileUuid}`);
+    const base = edits.activeInbounds ? edits.activeInbounds.map(toUuid) : current;
+    return {
+        activeConfigProfileUuid: profileUuid,
+        activeInbounds: applyEdits(base, (edits.addActiveInbounds ?? []).map(toUuid), (edits.removeActiveInbounds ?? []).map(toUuid)),
     };
-
-    let active: string[];
-    if (edits.activeInbounds) active = edits.activeInbounds.map(toUuid);
-    else if (switching) active = [];
-    else active = (current?.activeInbounds ?? []).map((i) => i.uuid);
-    for (const ref of edits.addActiveInbounds ?? []) {
-        const id = toUuid(ref);
-        if (!active.includes(id)) active.push(id);
-    }
-    const drop = new Set((edits.removeActiveInbounds ?? []).map(toUuid));
-    return { activeConfigProfileUuid: profileUuid, activeInbounds: active.filter((id) => !drop.has(id)) };
 }
