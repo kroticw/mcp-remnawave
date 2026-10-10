@@ -48,7 +48,10 @@ export class RemnawaveClient {
             }
             throw new Error(`Remnawave API error: ${errorMessage}`);
         }
-        return res.json() as Promise<T>;
+        // Some endpoints (e.g. hosts bulk update) answer 204 or 200 with no body.
+        const text = await res.text();
+        if (text.trim() === '') return { ok: true } as T;
+        return JSON.parse(text) as T;
     }
 
     private async get<T = unknown>(path: string): Promise<T> {
@@ -216,12 +219,12 @@ export class RemnawaveClient {
         return this.post(REST_API.NODES.ACTIONS.DISABLE(uuid));
     }
 
-    async restartNode(uuid: string) {
-        return this.post(REST_API.NODES.ACTIONS.RESTART(uuid));
+    async restartNode(uuid: string, forceRestart = false) {
+        return this.post(REST_API.NODES.ACTIONS.RESTART(uuid), { forceRestart });
     }
 
-    async restartAllNodes() {
-        return this.post(REST_API.NODES.ACTIONS.RESTART_ALL);
+    async restartAllNodes(forceRestart = false) {
+        return this.post(REST_API.NODES.ACTIONS.RESTART_ALL, { forceRestart });
     }
 
     async resetNodeTraffic(uuid: string) {
@@ -408,6 +411,10 @@ export class RemnawaveClient {
 
     async getInternalSquads() {
         return this.get(REST_API.INTERNAL_SQUADS.GET);
+    }
+
+    async getInternalSquad(uuid: string) {
+        return this.get(REST_API.INTERNAL_SQUADS.GET_BY_UUID(uuid));
     }
 
     async getSquadAccessibleNodes(uuid: string) {

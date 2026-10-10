@@ -1,9 +1,12 @@
+import { formatJson, redactString, isRedactionEnabled } from '../redact.js';
+
+/** Every tool returns through here, so secrets are redacted in one place. */
 export function toolResult(data: unknown) {
     return {
         content: [
             {
                 type: 'text' as const,
-                text: JSON.stringify(data, null, 2),
+                text: formatJson(data),
             },
         ],
     };
@@ -16,7 +19,7 @@ export function toolError(error: unknown) {
         content: [
             {
                 type: 'text' as const,
-                text: `Error: ${message}`,
+                text: `Error: ${isRedactionEnabled() ? redactString(message) : message}`,
             },
         ],
         isError: true,

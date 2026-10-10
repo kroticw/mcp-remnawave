@@ -13,10 +13,12 @@ const PANEL_URL = 'http://panel.test';
 export function startPanel() {
     const dir = mkdtempSync(join(tmpdir(), 'remnawave-mcp-test-'));
     const log = join(dir, 'requests.jsonl');
+    const routes = join(dir, 'routes.json');
     writeFileSync(log, '');
     return {
         url: PANEL_URL,
         log,
+        routes,
         read() {
             if (!existsSync(log)) return [];
             return readFileSync(log, 'utf8')
@@ -45,6 +47,7 @@ export async function connect(panel, env = {}) {
             REMNAWAVE_BASE_URL: panel.url,
             REMNAWAVE_API_TOKEN: 'test-token',
             FAKE_PANEL_LOG: panel.log,
+            FAKE_PANEL_ROUTES: panel.routes,
             ...env,
         },
         stderr: 'pipe',
@@ -64,4 +67,14 @@ export async function callOnce(client, panel, name, args = {}) {
     panel.clear();
     const result = await client.callTool({ name, arguments: args });
     return { result, calls: panel.read() };
+}
+
+/** Writes canned panel replies ("METHOD /path" -> { status, body }) for a fake panel. */
+export function setRoutes(panel, routes) {
+    writeFileSync(panel.routes, JSON.stringify(routes));
+}
+
+/** Parses the JSON text of a tool result. */
+export function resultJson(result) {
+    return JSON.parse(result.content[0].text);
 }

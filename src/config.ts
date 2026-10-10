@@ -5,6 +5,7 @@ export interface Config {
     cfAccessClientId?: string;
     cfAccessClientSecret?: string;
     readonly: boolean;
+    redact: boolean;
     expectedTitle?: string;
 }
 
@@ -15,6 +16,7 @@ export function loadConfig(): Config {
     const cfAccessClientId = process.env.CF_ACCESS_CLIENT_ID;
     const cfAccessClientSecret = process.env.CF_ACCESS_CLIENT_SECRET;
     const readonly = process.env.REMNAWAVE_READONLY === 'true';
+    const redact = process.env.REMNAWAVE_REDACT !== 'false';
     const expectedTitle = process.env.REMNAWAVE_EXPECTED_TITLE?.trim() || undefined;
 
     if (!baseUrl) {
@@ -31,6 +33,7 @@ export function loadConfig(): Config {
         cfAccessClientId,
         cfAccessClientSecret,
         readonly,
+        redact,
         expectedTitle,
     };
 }

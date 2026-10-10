@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { RemnawaveClient } from './client/index.js';
 import { Config } from './config.js';
+import { setRedactionEnabled } from './redact.js';
 import { registerAllTools } from './tools/index.js';
 import { registerAllResources } from './resources/index.js';
 import { registerAllPrompts } from './prompts/index.js';
@@ -28,6 +29,7 @@ export function createServer(config: Config): McpServer {
         version: __PACKAGE_VERSION__,
     });
 
+    setRedactionEnabled(config.redact);
     const client = new RemnawaveClient(config);
 
     registerAllTools(server, client, config.readonly);
