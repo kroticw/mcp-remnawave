@@ -413,6 +413,10 @@ export class RemnawaveClient {
         return this.get(REST_API.INTERNAL_SQUADS.GET);
     }
 
+    async getInternalSquad(uuid: string) {
+        return this.get(REST_API.INTERNAL_SQUADS.GET_BY_UUID(uuid));
+    }
+
     async getSquadAccessibleNodes(uuid: string) {
         return this.get(REST_API.INTERNAL_SQUADS.ACCESSIBLE_NODES(uuid));
     }
