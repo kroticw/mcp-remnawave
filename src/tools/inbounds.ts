@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { RemnawaveClient } from '../client/index.js';
 import { toolResult, toolError } from './helpers.js';
+import { registerConfigProfilePatchTool } from './config-profile-patch.js';
 
 export function registerInboundTools(
     server: McpServer,
@@ -85,6 +86,8 @@ export function registerInboundTools(
     );
 
     if (readonly) return;
+
+    registerConfigProfilePatchTool(server, client);
 
     server.tool(
         'config_profiles_create',
