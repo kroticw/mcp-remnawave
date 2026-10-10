@@ -233,7 +233,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `nodes_get` | Get node by UUID | read |
 | `nodes_tags_list` | List all node tags | read |
 | `nodes_create` | Create a new node | write |
-| `nodes_update` | Update node settings | write |
+| `nodes_update` | Update node settings, switch its config profile and active inbounds (UUIDs or tags) | write |
 | `nodes_delete` | Delete a node | write |
 | `nodes_enable` | Enable a node | write |
 | `nodes_disable` | Disable a node | write |
@@ -312,7 +312,7 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `squads_list` | List all squads | read |
 | `squads_accessible_nodes` | Get squad accessible nodes | read |
 | `squads_create` | Create a squad | write |
-| `squads_update` | Update a squad | write |
+| `squads_update` | Rename a squad and replace, add or remove its inbounds (UUIDs or tags) | write |
 | `squads_delete` | Delete a squad | write |
 | `squads_add_users` | Add users to a squad by numeric user IDs | write |
 | `squads_remove_users` | Remove users from a squad by numeric user IDs | write |
@@ -699,7 +699,7 @@ docker compose up -d
 | `nodes_get` | Получить ноду по UUID | read |
 | `nodes_tags_list` | Список тегов нод | read |
 | `nodes_create` | Создать новую ноду | write |
-| `nodes_update` | Обновить настройки ноды | write |
+| `nodes_update` | Обновить настройки ноды, сменить профиль и активные инбаунды (UUID или теги) | write |
 | `nodes_delete` | Удалить ноду | write |
 | `nodes_enable` | Включить ноду | write |
 | `nodes_disable` | Отключить ноду | write |
@@ -777,7 +777,7 @@ docker compose up -d
 | `squads_list` | Список групп | read |
 | `squads_accessible_nodes` | Доступные ноды группы | read |
 | `squads_create` | Создать группу | write |
-| `squads_update` | Обновить группу | write |
+| `squads_update` | Переименовать группу, заменить, добавить или убрать её инбаунды (UUID или теги) | write |
 | `squads_delete` | Удалить группу | write |
 | `squads_add_users` | Добавить пользователей в группу по числовым ID | write |
 | `squads_remove_users` | Убрать пользователей из группы по числовым ID | write |
