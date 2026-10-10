@@ -23,7 +23,7 @@ export async function verifyPanelIdentity(config: Config): Promise<void> {
 export function createServer(config: Config): McpServer {
     const server = new McpServer({
         name: config.expectedTitle ? `remnawave-mcp (${config.expectedTitle})` : 'remnawave-mcp',
-        version: '2.2.0',
+        version: '2.3.0',
     });
 
     setRedactionEnabled(config.redact);
